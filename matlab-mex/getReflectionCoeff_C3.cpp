@@ -6,8 +6,9 @@
 
 using namespace std;
 std::complex<double> I(0,1);
-const double c0 = 2.99792458E+08;
+const double c0 = 2.99792458E+08; // Speed of light
 
+// Choose if you want to run with matlab or a test outside matlab using OpenMP
 #define MATLAB_RUN
 //#define USE_OPENMP
 
@@ -20,18 +21,21 @@ const double c0 = 2.99792458E+08;
 	#include <omp.h>
 #endif
 
-/** Find Reflection and tranmission coefficient of structure
-	r,t 	-> Where we store reflection and transmission coefficient (complex)
-	n	-> List of indices of layers (light incoming from the left to the right 0,1,2,3...)
-	h	-> List of layer thickness
-	NumLayers	-> Number of layers in structure (not including air/first layer and substrate)
-	na		-> Infinite medium to the left, where incoming pulse is located
-	nb		-> Infinite medium to the right
-	M_end		-> If parts of transfer matrix is precalculated, then this is on the right, (otherwise leave as NULL)
-*/
-
-
-void getRT(std::complex<double> *r, std::complex<double> *t,double *n_re, double *n_im, double *h, int NumLayers, double freq, double na, double nb, std::complex<double> *G0, std::complex<double> *G_end)
+//! Compute Reflection and tranmission coefficient for layers of materals
+/*! Compute Reflection and tranmission coefficient for layers of materals
+ * \param r Storage of reflection coefficient (complex)
+ * \param t Storage of transmission coefficient (complex)
+ * \param n_re List of real material indices for layers (Ordering: light incoming from the left 0,1,2,3...)
+ * \param n_im List of imag material indices for layers (Ordering: light incoming from the left 0,1,2,3...)
+ * \param h List of material layer thicknesses
+ * \param NumLayers Number of layers in structure (between air (0th layer) layer and substrate (final layer))
+ * \param freq Frequency of incoming light field
+ * \param na Infinite medium to the left (0th layer), where incoming field starts
+ * \param nb Infinite medium to the right (substrate)
+ * \param G0 Store computed reflection coeff. for other uses (can be NULL if this is not needed)
+ * \param G_end	Precomputed transfer matrix for final parts of structure. Will be added right before substrate layer (can be NULL)
+ **/
+void getRT(std::complex<double> *r, std::complex<double> *t, double *n_re, double *n_im, double *h, int NumLayers, double freq, double na, double nb, std::complex<double> *G0, std::complex<double> *G_end)
 {
 	//======================
 	// Find transfer matrix
@@ -81,38 +85,37 @@ void getRT(std::complex<double> *r, std::complex<double> *t,double *n_re, double
 }
 
 #ifdef MATLAB_RUN
-/**
+//! Compute reflection and transmission coefficients from dielectric stack
+/*! Light coming from material 'a' on the left propagating into
+ *  material 'b' on the right. Each element of the lists 'n' and 'h' 
+ *  represent the refractive index and length of a material
+ *  between material 'a' and 'b'.
+ *
  * Usage: 	[r,t,G0] = (na,nb,freq,n,h,G_init,n_qw_ind,n_qw)
- *			[r,t,G0] = (na,nb,freq,n,h,[],n_qw_ind,n_qw)
- *			[r,t,G0] = (na,nb,freq,n,h,G_init)
- * 			[r,t,G0] = (na,nb,freq,n,h)
- * 
- *  Desc: 	Light coming from material 'a' on the left propagating into
- *  		material 'b' on the right. Each element of the lists 'n' and 'h' 
- * 			represent the refractive index and length of a material
- * 			between material 'a' and 'b'.
+ *		[r,t,G0] = (na,nb,freq,n,h,[],n_qw_ind,n_qw)
+ *		[r,t,G0] = (na,nb,freq,n,h,G_init)
+ * 		[r,t,G0] = (na,nb,freq,n,h)	
  * 
  * Input:
- * na,nb 	-> Refractive indices of material 'a' and 'b'
- * freq 	-> Frequency of light, can be a list. Units: [1/s]
- *  
- * n		-> List of refractive indices of material layers
- * h		-> List of lengths of material layers. Units: [m]
- * G		-> A precomputed reflection coefficient, for each freq.
- * 				When this is used, the final layer index and width has to be
- * 				included in and the final element in n and h.
- * 				ex: First compute G using n = [n1,n2,n3,n4];
- * 					Then want to use G while adding on a single layer on the left
- * 					The new n vector is n=[n_new, n1]; and similar for h
- * n_qw_ind -> List of indices of which layers of n to apply n_qw to.
- * n_qw		-> List of frequency dependent refractive indices. NumQW x NumFreq matrix
+ * \param na Refractive indices of first material
+ * \param nb Refractive indices of substrate material
+ * \param freq Frequency of light, can be a list. Units: [1/s]
+ * \param n -> List of refractive indices of material layers
+ * \param h List of lengths of material layers. Units: [m]
+ * \param G A precomputed reflection coefficient, for each freq.
+ *	    When this is used, the final layer index and width has to be
+ *	    included in and the final element in n and h.
+ * 	    ex: First compute G using n = [n1,n2,n3,n4];
+ *		Then want to use G while adding on a single layer on the left
+ * 		The new n vector is n=[n_new, n1]; and similar for h
+ * \param n_qw_ind Index list of indices for layers of n to apply n_qw to.
+ * \param n_qw List of frequency dependent refractive indices. NumQW x NumFreq matrix
  * 
  * 
  * Output:
- * r,t		-> Amplitude Reflection and Transmission coefficients (complex).
- * 				Do R = abs(r)^2 to get intensity reflection.
- * 				Do T = (nb/na)*abs(t)^2 to get intensity transmission.
- * G0		-> The computed reflection coefficient for each frequency
+ * \return r Amplitude Reflection coefficients (complex). Do R = abs(r)^2 to get intensity reflection.
+ * \return t Amplitude Transmission coefficients (complex). Do T = (nb/na)*abs(t)^2 to get intensity transmission.
+ * \return G0 The computed reflection coefficient for each frequency.
  * */
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
@@ -637,7 +640,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 #else
 int main()
 {
-	cout << "Hello world" << endl;
+	cout << "Start reflection and transmission calcualtions..." << endl;
 	std::complex<double> r;
 	std::complex<double> t;
 
