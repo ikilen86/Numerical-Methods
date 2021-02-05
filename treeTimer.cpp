@@ -333,14 +333,12 @@ class myTimer{
 				double time_hr  = 24.0*(time_day - floor(time_day));
 				double time_min = 60.0*(time_hr  - floor(time_hr));
 				double time_sec = 60.0*(time_min - floor(time_min));
-			//	cout << "[d:hr:min:s] " << floor(time_day) << ":" << floor(time_hr) << ":" << floor(time_min) << ":" << floor(time_sec) << " ";
 				printf("[d:hr:min:s] %.0f:%2.0f:%2.0f:%2.0f ", floor(time_day), floor(time_hr), floor(time_min), floor(time_sec));
 			} else {
 				double time_min = real_time/60.0;
 				double time_sec = 60.0*(time_min  - floor(time_min));
 				double time_ms  = 1000.0*(time_sec - floor(time_sec));
 				double time_us  = 1000.0*(time_ms - floor(time_ms));
-				//cout << "[min:s:ms:us] " << floor(time_min) << ":" << floor(time_sec) << ":" << floor(time_ms) << ":" << floor(time_us) << " ";
 				printf("[min:s:ms:\xC2\xB5s] %2.0f:%2.0f:%3.0f:%3.0f ",floor(time_min), floor(time_sec), floor(time_ms), floor(time_us));
 	
 			}
@@ -711,7 +709,7 @@ class myTimerCentral{
 		//! Main root of timer tree
 		struct timer_tree *timer_tree_root;
 
-		//! Maximal number of sub_timers (default = 55)
+		//! Maximal number of sub_timers (default = 100)
 		int MAX_SUB_TIMERS;
 
 		//! Reset a timer in a tree helper function
@@ -828,7 +826,7 @@ class myTimerCentral{
 
 			while (c = *str++)
 			{
-				hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+				hash = ((hash << 5) + hash) + c;
 			}
 
 			return hash;
