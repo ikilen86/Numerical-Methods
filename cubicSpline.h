@@ -1,6 +1,15 @@
-
 #ifndef __CUBIC_SPLINE_H_INCLUDED__
 #define __CUBIC_SPLINE_H_INCLUDED__
+
+/* A class for spline interpolation of 1d functions on a uniform grid.
+ * This is designed for use when multiple evlautions is executed on a single curve.
+ * The endpoint derivatives are estimated from the endpoint values using 5 order or lower finite difference formulas
+ * Example: The following code interpolates a function defined by vectors x[Nx], y[Nx]
+ * CubicSpline *test = new CubicSpline(Nx, x);
+ * test->prepare(y);
+ * for(int i = 0; i < numX; i++)
+ * 	yp[i] = test->evaluate(xp[i])
+ **/
 
 #include <cstdlib>
 #include <stdio.h>
