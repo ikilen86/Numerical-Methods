@@ -1,11 +1,9 @@
 
 /*!
-	This is the adaptive Simpson quadrature for integration of function f(x) on the interval [a,b]
-	Isak Kilen @ 2016
+	A 1D adaptive Simpson quadrature for integration of function f(x) on the interval [a,b]
 */
 
 #include <cmath>
-#include <classDevice.h>
 
 #ifndef __INCLUDE_ADAPTIVE_SIMPSON__
 #define __INCLUDE_ADAPTIVE_SIMPSON__
