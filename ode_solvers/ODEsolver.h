@@ -9,12 +9,12 @@
 using namespace std;
 
 
-// Flags
+// A DBG flag
 //#define DBG_ISAK_REPORT_ODE_SOLVER_STEPS // Print ode solver step sizes and # function evaluations to file
 
-/*
- *
- *
+/* A sample program I based on the GSL ODE solver for rkf45 and developed a bit further.
+ * Please verify that any of the ode solvers work and let me know if there are any difficulties.
+ * Isak
  */
 
 
@@ -28,13 +28,14 @@ using namespace std;
  * p(sigma) = 1 / sigma). Value of 1.0 conforms to equation  
  * by Ascher and Petzold (reference: Ascher, U.M., Petzold, L.R.,  
  * Computer methods for ordinary differential and  
- * differential-algebraic equations, SIAM, Philadelphia, 1998).  */ 
+ * differential-algebraic equations, SIAM, Philadelphia, 1998).  
+ */ 
 const double solver3_ERR_SAFETY = 8.0;
 
 
 class ODE_Solver {
 	public:
-
+		//! An empty constructor
 		ODE_Solver() {
 			method_name = "";
 			dimension = 0;
@@ -75,6 +76,7 @@ class ODE_Solver {
 			solver_state.interp_t1 = HUGE_VAL;
 		}
 
+		//! A destructor
 		~ODE_Solver() {
 
 			if (file_step_output != NULL)
@@ -115,6 +117,7 @@ class ODE_Solver {
 			}
 		}
 
+		//! Reset internal variables of solver
 		void Reset() {
 			num_func_eval = 0.0;
 
@@ -180,6 +183,19 @@ class ODE_Solver {
 			}
 		}
 
+		//! Initialize ODE solver
+		/*! 
+		 * \param method The name of the requested method to use: 'rkdp45', 'rkf12', 'rk23', 'rkf45', ...
+		 * \param tol_abs Absolute tolerance for adaptive solver
+		 * \param tol_rel Relative tolerance for adaptive solver
+		 * \param min_step Minimum stepsize possible for adaptive solver
+		 * \param max_step Maximum stepsize possible for adaptive solver
+		 * \param pars Parameters to be passed into user-supplied function
+		 * \param n Dimension of input/output vectors
+		 * \param func User supplied function to integrate: f(t, y, F, params), where t is current time, y is current state, F is the vector where results will be stored
+		 * \param jac User supplied Jacobian: J = d/dy(i) f(t,y, F,params) 
+		 * \param adapt true if adaptive stepping is used, false otherwise.
+		 **/
 		void Init(const char *method,  double tol_abs, double tol_rel, double min_step, double max_step, void *pars, int n, int (*func)(double , const double *, double *, void *),  int (*jac)(double , const double *, double *, double *, void *), bool adapt) 
 		{
 
@@ -315,14 +331,15 @@ class ODE_Solver {
 			Reset();
 		}
 
-		/* Evolve position (t,y(t)) to (t1, y(t1)) with adaptive steps. Initial value and result is stored in y_out
+		//! Step forward using adaptive stepsizes
+		/*! Evolve position (t,y(t)) to (t1, y(t1)) with adaptive steps. Initial value and result is stored in y_out
 		 * 
 		 * Input:
-		 *   t_out     -> Initial time, will be updated to t1 once method has finished
-		 *   t1        -> Target time, t1 > t, algorithm will run and produce output at t=t1
-		 *   step_size -> Requested step size, will be adjusted by function call.
-		 *   y_out     -> initial position and output storage at t = t_out
-		 */
+		 * \param t_out     	Initial time, will be updated to t1 once method has finished
+		 * \param t1        	Target time, t1 > t, algorithm will run and produce output at t=t1
+		 * \param step_size 	Requested step size, will be adjusted by function call.
+		 * \param y_out 	initial position and output storage at t = t_out
+		 **/
 		void Step_Adaptive(double *t_out, double t1, double *step_size, double *y_out)
 		{
 			// Some convenient warnings
@@ -437,13 +454,14 @@ class ODE_Solver {
 		}
 
 
-		/* Evolve position (t,y(t)) to (t1, y(t1)) with fixed steps. Initial value and result is stored in y_out
+		//! Step forward using a fixed stepsize
+		/*! Evolve position (t,y(t)) to (t1, y(t1)) with fixed steps. Initial value and result is stored in y_out
 		 * 
 		 * Input:
-		 *   t_out     -> Initial time, will be updated to t1 once method has finished
-		 *   t1        -> Target time, t1 > t, algorithm will step until t=t1 with requested step size
-		 *   step_size -> Requested step size, will not be changed by this method. Can be longer than t1-*t
-		 *   y_out     -> initial position and output storage
+		 * \param t_out     Initial time, will be updated to t1 once method has finished
+		 * \param t1        Target time, t1 > t, algorithm will step until t=t1 with requested step size
+		 * \param step_size Requested step size, will not be changed by this method. Can be longer than t1-*t
+		 * \param y_out     initial position and output storage
 		 */
 		void Step_Fixed(double *t_out, double t1, double *step_size, double *y_out) 
 		{
@@ -497,19 +515,19 @@ class ODE_Solver {
 
 		}
 
-		// Return number of function evaluations taken by algorithm
+		//! Return number of function evaluations taken by algorithm
 		double number_function_evaluations()
 		{
 			return num_func_eval;
 		}
 
-		// Return average step size used for calculations
+		//! Return average step size used for calculations
 		double average_step_size()
 		{
 			return avg_step_size;
 		}
 
-		// Force output file finish writing and close
+		//! Force output file finish writing and close
 		void file_output_close()
 		{
 			#ifdef DBG_ISAK_REPORT_ODE_SOLVER_STEPS
@@ -569,6 +587,7 @@ class ODE_Solver {
 			double interp_t1; // Stores t-values for interpolation method
 		} solver_state;
 
+		//! Step forward using rkf12 with error estimtes
 		int rkf12_step(double t, double step_size, double *y)
 		{
 			// Runge-Kutta-Fehlberg coefficients. Zero elements left out
@@ -632,6 +651,7 @@ class ODE_Solver {
 			return 0;
 		}
 
+		//! Step forward using rk23 with error estimtes
 		int rk23_step(double t, double step_size, double *y)
 		{
 			// Runge-Kutta Bogacki–Shampine coefficients. Zero elements left out
@@ -705,7 +725,7 @@ class ODE_Solver {
 			return 0;
 		}
 
-		// Single step of RK4 algorithm
+		//! Step forward using rk4
 		int rk4_step(double t, double step_size, double *y)
 		{
 			int status;
@@ -759,8 +779,8 @@ class ODE_Solver {
 			return 0;
 		}
 
-		// RK4 step with substeps in order to estimate error
-		// ODEINT algorithm from "Numerical Recipes in Pascal" by W.H. Press, B.P. Flannery, S.A. Teukolsky and W.T. Vetterling, Cambridge U. Press, Cambridge 1989 (with a few minor changes)
+		//! RK4 step with substeps in order to estimate error
+		//! ODEINT algorithm from "Numerical Recipes in Pascal" by W.H. Press, B.P. Flannery, S.A. Teukolsky and W.T. Vetterling, Cambridge U. Press, Cambridge 1989 (with a few minor changes)
 		int rk4_step_err(double t, double step_size, double *y)
 		{
 			int status;
@@ -795,6 +815,7 @@ class ODE_Solver {
 			return 0;
 		}
 
+		//! Step forward using rkf45 with error estimate
 		int rkf45_step(double t, double step_size, double *y)
 		{
 			// Runge-Kutta-Fehlberg coefficients. Zero elements left out
@@ -885,7 +906,7 @@ class ODE_Solver {
 			}
 			return 0;
 		}
-
+		//! Step forward using rkdp45 with error estimate
 		int rkdp45_step(double t, double step_size, double *y)
 		{
 	//		GSL parameters
@@ -999,7 +1020,12 @@ class ODE_Solver {
 			return 0;
 		}
 
-
+		//! Estimate errors taken when stepping with a given step-size
+		/*!\param step_size target step size, might not be be reached
+		 * \param new_step_size This is the stepsize that is determined to satisfy error bounds
+		 * \param y Current state of system
+		 * \param max_err_ratio Stores the maximal error found by function
+		 **/
 		int adaptive_estimate_error(double step_size, double *new_step_size, double *y, double *max_err_ratio)
 		{
 			double q = selected_step_method_LTE_order; // local truncation error order of formula
@@ -1085,11 +1111,16 @@ class ODE_Solver {
 		}
 
 
-		/* Interpolate data from points (t0,y0) and (t1,y1) using Hermite splines.
+		//! Interpolation of y values between two known points
+		/*! Interpolate data from points (t0,y0) and (t1,y1) using Hermite splines.
 		 * The derivatives (t0,f0) and (t1,f1) are collected from the ODE solvers
 		 * and might require additional function evaluations (depending on ODE solver used).
-		 * t_out in  [t0,t1] is the target time
-		 * y_out is where to store 
+		 * \param t0 left t-endpoint
+		 * \param t1 right t-endpoint
+		 * \param y0 left y-endpoint
+		 * \param y1 right y-endpoint
+		 * \param t_out the target time in  [t0,t1]
+		 * \param y_out where to store new values
 		 **/
 		void interpolate_hermite(double t0, double t1, double *y0, double *y1, double t_out, double *y_out)
 		{
