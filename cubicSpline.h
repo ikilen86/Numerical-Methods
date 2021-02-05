@@ -56,29 +56,7 @@ class CubicSpline
 			{
 				grid_dx[i] = grid_x[i+1]-grid_x[i];
 			}
-			
-			double dx0_tmp = grid_dx[0];
 
-/*
-			// GUPPE always has uniform grid
-			for(int i =0; i< num_x-1;i++)
-			{
-				if (abs(grid_dx[i]-dx0_tmp) > 1.0e-12)
-				{
-					// Mostly because of speed, simply uncomment the lines
-					//i0 = misc_get_k_index(kp, grid_x, num_x);
-					// in the evaluate functions to enable support for non-uniform grids
-					cout << "CubicSpline(num_x, x): Currently not evalulating on non-uniform grid_x" << endl;
-					for(int k = 0; k < Nx; k++)
-					{
-						cout << "x = " << grid_x[k] << endl;
-					}
-					
-					cout << "quitting.." << endl;
-					exit(-1);
-				}
-			}
-*/
 			// Tmp array
 			double dX_cs[num_x-2];
 			for(int i =0; i< num_x-2;i++)
@@ -173,9 +151,11 @@ class CubicSpline
 		}
 		
 		
-		//! Generate spline interpolation object
+		//! Generate spline interpolation object for discreete values
 		/*! Estimate derivatives at endpoints, fill/solve tri-diagonal matrix, and prepare interpolation coeff.
+		 *  Call evaluate(x) to get the interpolated values at a given point.
 		 * \param y function values to be interpolated. Length must be equal to the values set during initialization.
+		 * \sa evaluate
 		 */
 		void prepare(double *y)
 		{
@@ -218,21 +198,29 @@ class CubicSpline
 			}
 		}
 		
+		//! Evalutate spline interpolation object
+		/*! Should be called after evaluate(). 
+		 * \param kp x-value where interpolation object is evaluated.
+		 * \return Spline polynomial evaluated at given point
+		 * \sa prepare
+		 **/
 		double evaluate(double kp)
 		{
+			// Find correct spline polynomial
 			int i0;
 			if (kp < grid_x[num_x-1]) // select correct interval
 			{
+				// uniform grid
 				double kp_indx = (kp-grid_x[0])/grid_dx[0];
 				i0 = floor(kp_indx);
-				//i0 = misc_get_k_index(kp, grid_x, num_x);
 				
+			} else if (kp < grid_x[0]) {
+				i0 = 0; // First polynomial
 			} else {
-				i0 = num_x-2; // Last interval
+				i0 = num_x-2; // Last polynomial
 			}
-
-			//i0 = misc_get_k_index(kp, grid_x, num_x);
 			
+			// Evaluate polynomial 
 			double kp_x0_1 = (kp  -grid_x[i0]);
 			double x1_kp_1 = (grid_x[i0+1]-kp);
 			double kp_x0_3 = kp_x0_1*kp_x0_1*kp_x0_1;
@@ -243,19 +231,29 @@ class CubicSpline
 			return y0;
 		}
 		
+		//! Evalutate derivative of spline interpolation object
+		/*! Should be called after evaluate(). 
+		 * \param kp x-value where interpolation object is evaluated.
+		 * \return Derivative of spline polynomial evaluated at given point
+		 * \sa prepare
+		 **/
 		double evaluate_df(double kp)
 		{
+			// Find correct spline polynomial
 			int i0;
 			if (kp < grid_x[num_x-1]) // select correct interval
 			{
+				// uniform grid
 				double kp_indx = (kp-grid_x[0])/grid_dx[0];
 				i0 = floor(kp_indx);
 				
+			} else if (kp < grid_x[0]) {
+				i0 = 0; // First polynomial
 			} else {
-				i0 = num_x-2; // Last interval
+				i0 = num_x-2; // Last polynomial
 			}
-//			i0 = misc_get_k_index(kp, grid_x, num_x);
 			
+			// Evaluate derivative of polynomial 
 			double kp_x0_1 = (kp  -grid_x[i0]);
 			double x1_kp_1 = (grid_x[i0+1]-kp);
 			double kp_x0_3 = 3.0*kp_x0_1*kp_x0_1;
@@ -307,168 +305,6 @@ class CubicSpline
 				cubic_spline_z[i] = cubic_spline_diag_d[i] - cubic_spline_diag_c[i]*cubic_spline_z[i+1];
 			}
 		}
-	
-		/* INPUT: A - array of pointers to rows of a square matrix having dimension N
-		 *        Tol - small tolerance number to detect failure when the matrix is near degenerate
-		 * OUTPUT: Matrix A is changed, it contains both matrices L-E and U as A=(L-E)+U such that P*A=L*U.
-		 *        The permutation matrix is not stored as a matrix, but in an integer vector P of size N+1 
-		 *        containing column indexes where the permutation matrix has "1". The last element P[N]=S+N, 
-		 *        where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S    
-		 */
-		int LUPDecompose(double **A, int N, double Tol, int *P) 
-		{
-
-			int i, j, k, imax; 
-			double maxA, *ptr, absA;
-
-			for (i = 0; i <= N; i++)
-				P[i] = i; //Unit permutation matrix, P[N] initialized with N
-
-			for (i = 0; i < N; i++) {
-				maxA = 0.0;
-				imax = i;
-
-				for (k = i; k < N; k++)
-					if ((absA = fabs(A[k][i])) > maxA) { 
-						maxA = absA;
-						imax = k;
-					}
-
-				if (maxA < Tol) return 0; //failure, matrix is degenerate
-
-				if (imax != i) {
-					//pivoting P
-					j = P[i];
-					P[i] = P[imax];
-					P[imax] = j;
-
-					//pivoting rows of A
-					ptr = A[i];
-					A[i] = A[imax];
-					A[imax] = ptr;
-
-					//counting pivots starting from N (for determinant)
-					P[N]++;
-				}
-
-				for (j = i + 1; j < N; j++) {
-					A[j][i] /= A[i][i];
-
-					for (k = i + 1; k < N; k++)
-						A[j][k] -= A[j][i] * A[i][k];
-				}
-			}
-
-			return 1;  //decomposition done 
-		}
-
-
-		/* INPUT: A,P filled in LUPDecompose; b - rhs vector; N - dimension
-		 * OUTPUT: x - solution vector of A*x=b
-		 * Example:
-			A = Mat(N,N);
-			int permutations[N+1] = {0, 0, 0, 0};
-			int sig = LUPDecompose(A, N, 1e-8, permutations);
-			if (sig!=1)
-			{
-				cout << "CubicSpline::prepare()LU:Decomposition faliure.." << endl;
-				exit(-1);
-			}
-			A_inv = Mat(N,N);
-			LUPInvert(A, permutations, N, A_inv);
-		 */
-		void LUPSolve(double **A, int *P, double *b, int N, double *x) 
-		{
-
-			for (int i = 0; i < N; i++) {
-				x[i] = b[P[i]];
-
-				for (int k = 0; k < i; k++)
-					x[i] -= A[i][k] * x[k];
-			}
-
-			for (int i = N - 1; i >= 0; i--) {
-				for (int k = i + 1; k < N; k++)
-					x[i] -= A[i][k] * x[k];
-
-				x[i] = x[i] / A[i][i];
-			}
-		}
-
-		/* INPUT: A,P filled in LUPDecompose; N - dimension
-		 * OUTPUT: IA is the inverse of the initial matrix
-		 */
-		void LUPInvert(double **A, int *P, int N, double **IA)
-		{
-			for (int j = 0; j < N; j++) {
-				for (int i = 0; i < N; i++) {
-					if (P[i] == j) 
-						IA[i][j] = 1.0;
-					else
-						IA[i][j] = 0.0;
-					for (int k = 0; k < i; k++)
-						IA[i][j] -= A[i][k] * IA[k][j];
-				}
-				
-				for (int i = N - 1; i >= 0; i--) {
-					for (int k = i + 1; k < N; k++)
-						IA[i][j] -= A[i][k] * IA[k][j];
-					IA[i][j] = IA[i][j] / A[i][i];
-				}
-			}
-		}
-
-		/* INPUT: A,P filled in LUPDecompose; N - dimension. 
-		 * OUTPUT: Function returns the determinant of the initial matrix
-		 */
-		double LUPDeterminant(double **A, int *P, int N) {
-
-			double det = A[0][0];
-
-			for (int i = 1; i < N; i++)
-				det *= A[i][i];
-
-			if ((P[N] - N) % 2 == 0)
-				return det; 
-			else
-				return -det;
-		}
-	
-		/* Return index 'i' of kp in array x such that x[i] <= kp < x[i+1]
-		 * Assumes array is ordered such that K[0] < K[1] < ... < K[numEl-1]
-		 * Does NOT check if kp is contained inside x[0] <= kp < x[numEl-1]
-		 */
-		int misc_get_k_index(double kp, double *x, int numEl)
-		{
-				int ia = 0;
-				int ib = numEl-1;
-				int ic = 0;
-				int counter = 0;
-				int counter_max = 10000;
-				while (counter<counter_max)
-				{
-						ic = floor((ia+ib)/2.0);
-						if ((x[ic] <= kp)&&(kp < x[ic+1]))
-						{
-								return ic;
-						}
-
-						if (x[ic] < kp)
-						{
-								ia = ic;
-						} else {
-								ib = ic;
-						}
-
-						counter++;
-				}
-
-				cout << "misc_get_k_index() Could not find element inside array!" << endl;
-				cout << "kp = " << kp << endl;
-				cout << "x[0] = " << x[0] << ", x[" << numEl-1 << "] = " << x[numEl-1] << endl;
-				exit(-1);
-		}
-
 			
 		int num_x;
 		double *grid_x;
