@@ -1,13 +1,9 @@
 
 
 /*!
-	Here are a few functions for input and output of the simualtino data
-	The data can be compressed into binary files\n
+	Here are a few functions for input and output of simulation data
 	There are functions for checking if a directory/file exists\n
 	The default behavior is to overwrite files with the same name.\n
-	2018: Additional comments \n
-	2016: Build and design \n
-	Isak Kilen
 */
 
 #include <iostream>
