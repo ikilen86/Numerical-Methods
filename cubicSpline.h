@@ -12,6 +12,9 @@ using namespace std;
 class CubicSpline
 {
 	public:
+		//! An empty constructor
+		/*! Initialize the spline object with null pointers. No arrays are allocated.
+		 **/
 		CubicSpline()
 		{
 			cubic_spline_diag_a = NULL;
@@ -25,6 +28,11 @@ class CubicSpline
 			num_x = 0;
 		}
 		
+		//! A constructor
+		/*! Initialize the spline object
+		 * \param Nx Number of x-grid points
+		 * \param x x-grid to evaluate over 
+		 **/
 		CubicSpline(int Nx, double *x)
 		{
 			cubic_spline_diag_a = NULL;
@@ -71,26 +79,22 @@ class CubicSpline
 				}
 			}
 */
-			
+			// Tmp array
 			double dX_cs[num_x-2];
 			for(int i =0; i< num_x-2;i++)
 			{
 				dX_cs[i] = grid_dx[i+1]+grid_dx[i];
 			}
 			
-			// Setup diagonal matrices
+			// Setup diagonal matrix
 			cubic_spline_diag_b[0]       = 2.0*grid_dx[0];
 			cubic_spline_diag_b[num_x-1] = 2.0*grid_dx[num_x-2];
 			for(int i = 1; i < num_x-1; i++)
 			{
 				cubic_spline_diag_b[i] = 2.0*dX_cs[i-1];
 			}
-			
-			for(int i = 0; i < num_x-1; i++)
-			{
-				cubic_spline_diag_a[i] = grid_dx[i];
-				cubic_spline_diag_c[i] = grid_dx[i];
-			}
+			memcpy(cubic_spline_diag_a, grid_dx, (num_x-1)*sizeof(double));
+			memcpy(cubic_spline_diag_c, grid_dx, (num_x-1)*sizeof(double));
 			
 			// Prepare diag_c for Tri. Diag. Solver
 			cubic_spline_diag_c[0] = cubic_spline_diag_c[0]/cubic_spline_diag_b[0];
@@ -105,10 +109,9 @@ class CubicSpline
 				cubic_spline_z[i] = 0.0;
 			}
 			
-			//cubic_spline_coeff_p = new double*[num_x-1];
+			// Prepare storage for coeff.
 			for(int i = 0; i < num_x-1; i++)
 			{
-			//	cubic_spline_coeff_p[i] = new double[4];
 				for(int j = 0; j < 4; j++)
 				{
 					cubic_spline_coeff_p[i][j] = 0.0;
@@ -116,6 +119,7 @@ class CubicSpline
 			}
 		}
 		
+		//! Destructor
 		~CubicSpline()
 		{
 			if (cubic_spline_diag_a != NULL)
@@ -135,6 +139,7 @@ class CubicSpline
 			}
 		}
 		
+		//! Copy constructor
 		CubicSpline(const CubicSpline &obj)
 		{
 			num_x = obj.num_x;
@@ -144,17 +149,17 @@ class CubicSpline
 				
 				for(int i = 0; i < num_x-1; i++)
 				{
-					cubic_spline_diag_a[i] = obj.cubic_spline_diag_a[i];
-					cubic_spline_diag_c[i] = obj.cubic_spline_diag_c[i];
-					grid_dx[i] = obj.grid_dx[i];
+					cubic_spline_diag_a[i]  = obj.cubic_spline_diag_a[i];
+					cubic_spline_diag_c[i]  = obj.cubic_spline_diag_c[i];
+					grid_dx[i] 		= obj.grid_dx[i];
 				}
 				
 				for(int i = 0; i < num_x; i++)
 				{
 					cubic_spline_diag_b[i]	= obj.cubic_spline_diag_b[i];
 					cubic_spline_diag_d[i]	= obj.cubic_spline_diag_d[i];
-					cubic_spline_z[i]		= obj.cubic_spline_z[i];
-					grid_x[i]				= obj.grid_x[i];
+					cubic_spline_z[i]	= obj.cubic_spline_z[i];
+					grid_x[i]		= obj.grid_x[i];
 				}
 				
 				for(int i = 0; i < num_x-1; i++)
@@ -168,23 +173,31 @@ class CubicSpline
 		}
 		
 		
-		
+		//! Generate spline interpolation object
+		/*! Estimate derivatives at endpoints, fill/solve tri-diagonal matrix, and prepare interpolation coeff.
+		 * \param y function values to be interpolated. Length must be equal to the values set during initialization.
+		 */
 		void prepare(double *y)
 		{
 			// Estimate derivatives at endpoints
 			double dx = grid_dx[0];
-			//double df_0 = 0.0;
-			//double df_N = 0.0;
-			//double df_0 =  (-3.0*y[0]       + 4.0*y[1]       - y[2]		)/(2.0*dx);	// 2nd Order
-			//double df_N = -(-3.0*y[num_x-1] + 4.0*y[num_x-2] - y[num_x-3] )/(2.0*dx);	// 2nd Order
-			double df_0 =  (-25.0*y[0]       + 48.0*y[1]       - 36.0*y[2]       + 16.0*y[3]       - 3.0*y[4]      )/(12.0*dx); // 4th Order
-			double df_N = -(-25.0*y[num_x-1] + 48.0*y[num_x-2] - 36.0*y[num_x-3] + 16.0*y[num_x-4] - 3.0*y[num_x-5])/(12.0*dx); // 4th Order
-			
-			// Use fit to estimate derivative on  RHS, very nice for ne or nh that go as ~exp(-Ak^2 - Bk + C) for large k
-			//double df_N = fit_derivative_right_endpoint_gaussian(y[num_x-3], y[num_x-2], y[num_x-1]);
-			
-			// prepare cubic spline interpolation
-			
+			double df_0, df_N;
+			if ( num_x == 2)
+			{
+				df_0 = (y[0] 	    - y[1]	)/dx;
+				df_N = -(y[num_x-1] - y[num_x-2])/dx;
+			} else if (num_x == 3)
+			{
+				// 2nd Order
+				df_0 =  (-3.0*y[0]       + 4.0*y[1]       - y[2]	)/(2.0*dx);	
+				df_N = -(-3.0*y[num_x-1] + 4.0*y[num_x-2] - y[num_x-3]  )/(2.0*dx);
+			} else {
+				// 4th Order
+				df_0 =  (-25.0*y[0]       + 48.0*y[1]       - 36.0*y[2]       + 16.0*y[3]       - 3.0*y[4]      )/(12.0*dx); 
+				df_N = -(-25.0*y[num_x-1] + 48.0*y[num_x-2] - 36.0*y[num_x-3] + 16.0*y[num_x-4] - 3.0*y[num_x-5])/(12.0*dx);
+			}
+
+			// prepare array
 			cubic_spline_diag_d[0]       = 6.0*(y[1]-y[0])/grid_dx[0] - 6.0*df_0;
 			cubic_spline_diag_d[num_x-1] = 6.0*df_N - 6.0*(y[num_x-1]-y[num_x-2])/grid_dx[num_x-2];
 			for(int i = 1; i < num_x-1; i++)
@@ -195,6 +208,7 @@ class CubicSpline
 			// solver: fill cubic_spline_z
 			tri_diag_solver();
 			
+			// Store coeff.
 			for(int i = 0; i < num_x-1; i++)
 			{
 				cubic_spline_coeff_p[i][0] = cubic_spline_z[i]/(6.0*grid_dx[i]);
@@ -253,6 +267,7 @@ class CubicSpline
 		}
 		
 	private:
+		//! Allocate space for interpolation object
 		void initialize_arrays()
 		{
 			if (cubic_spline_diag_a == NULL)
@@ -276,7 +291,7 @@ class CubicSpline
 			}
 		}
 	
-		// Thomas algorithm for simplified Gaussian elimination and back subst.
+		//! Thomas algorithm for simplified Gaussian elimination and back subst.
 		void tri_diag_solver()
 		{
 			cubic_spline_diag_d[0] = cubic_spline_diag_d[0]/cubic_spline_diag_b[0];
