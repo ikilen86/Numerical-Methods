@@ -26,6 +26,7 @@
 #include "fileIO.cpp"
 
 
+// Enable to debug
 //#define DYANMIC_INTERPOLATION_DIAGNOSTIC
 
 using namespace std;
@@ -34,6 +35,7 @@ using namespace std;
 class DynamicInterpolation
 {
 	public:
+		//! An empty constructor
 		DynamicInterpolation()
 		{
 			//F = NULL;
@@ -48,7 +50,20 @@ class DynamicInterpolation
 			z_target = NULL;
 		}
 		
-		//DynamicInterpolation(void (*f)(double*,double, double,double), int Nk, double x0, double x1, double dx, double y0, double y1, double dy, double z0, double z1, double dz)
+		//! A constructor
+		/*! Construct interpolation space
+		 * \param newName Filename used for storing interpolation space variables
+		 * \param Nk Number of output variables
+		 * \param x0 Input parameter 1 min value
+		 * \param x1 Input parameter 1 max value
+		 * \param dx Input parameter 1 interpolation resolution
+		 * \param y0 Input parameter 2 min value
+		 * \param y1 Input parameter 2 max value
+		 * \param dy Input parameter 2 interpolation resolution
+		 * \param z0 Input parameter 3 min value
+		 * \param z1 Input parameter 3 max value
+		 * \param dz Input parameter 3 interpolation resolution
+		 **/
 		DynamicInterpolation(const std::string & newName, int Nk, double x0, double x1, double dx, double y0, double y1, double dy, double z0, double z1, double dz)
 		{
 			ERROR_TOL = 1.0e-12;
@@ -165,6 +180,7 @@ class DynamicInterpolation
 			cout << "DynamicInterpolation:: Found and loaded " << num << " points from file" << endl;
 		}
 		
+		//! Destructor
 		~DynamicInterpolation()
 		{
 			if (x_target != NULL)
@@ -203,6 +219,8 @@ class DynamicInterpolation
 			}
 			
 		}
+	
+		//! Copy constructor
 		DynamicInterpolation(const DynamicInterpolation &obj)
 		{
 			file_name = obj.file_name;
@@ -278,10 +296,14 @@ class DynamicInterpolation
 
 		}
 		
-		/* Given that one wants to calculate the point (x,y,z), the interpolation requests that we evaluate the points in newPoints
-		 * (x,y,z) the point where the interpolation routine should evaluate
-		 * new_points -> A 8 X 3 list of new points to evaluate, where only the first 'num_new_points' points are required
-		 * num_new_points -> The number of new points to evaluate
+		//! Initialize interpolation object
+		/*! Given that WE want to calculate at the point (x,y,z), the interpolation requests that we also evaluate the points in new_points. At most num_num_points need to be calculated.
+		 * \param x the first coordinate we wish to evaluate
+		 * \param y the second coordinate we wish to evalute
+		 * \param z the third coordinate we wish to evaluate
+		 * \param new_points A [8x6] list of new points to evaluate, where only the first 'num_new_points' points along first dimension are required. The second dimension contains [x,y,z,x_ind,y_ind,z_ind] where the last 3 are needed for update_interpolation_grid()
+		 * \param num_new_points The number of new points to evaluate
+		 * \sa update_interpolation_grid
 		 */
 		void prepare_interpolation(double x, double y, double z, double **new_points, int *num_new_points)
 		{
@@ -358,18 +380,16 @@ class DynamicInterpolation
 			}
 		}
 		
-		/* Add data to the interpolation grid at x,y,z
-		 * x,y,z has to be a gridpoint, found from prepare_interpolation()
-		 * new_data is an array of length num_output
+		//! Add data to the interpolation grid at x,y,z
+		/*! Update stored interpolation object with new data
+		 * \param x_ind First coordinate index of a single gridpoint found from prepare_interpolation()
+		 * \param y_ind Second coordinate index of a single gridpoint found from prepare_interpolation()
+		 * \param z_ind Third coordinate index of a single gridpoint found from prepare_interpolation()
+		 * \param new_data A vector of length num_output of data that should be stored.
+		 * \sa prepare_interpolation
 		 * */
 		void update_interpolation_grid(int x_ind, int y_ind, int z_ind, double *new_data)
 		{
-			
-			//int x_ind 	= floor((x-X0)/DX);
-			//int y_ind 	= floor((y-Y0)/DY);
-			//int z_ind 	= floor((z-Z0)/DZ);
-			//cout << "DynamicInterpolation::update_interpolation_grid() index = " << x_ind << ", " << y_ind << ", " << z_ind << endl;
-			
 			if (FXYZ[x_ind][y_ind][z_ind] == NULL)
 			{
 			#ifdef DYANMIC_INTERPOLATION_DIAGNOSTIC
@@ -391,14 +411,16 @@ class DynamicInterpolation
 			
 		}
 		
-		/* Evaluate the function at the point x,y,z
-		 * Requires that one calls:
+		//! Evaluate the function at the point x,y,z
+		/*! Requires that one calls:
 		 * 1. prepare_interpolation(): In order to figure out if new points are needed in the interpolation grid
 		 * 2. User calculates all new points outside of this program
 		 * 3. update_interpolation_grid(): To update the function
-		 * then call this function with
-		 * output -> Where the data should be stored
-		 * x,y,z -> The target point
+		 * then call this function with:
+		 * \param x The first coordinate that we want to calculate
+		 * \param y The second coordinate that we want to calculate
+		 * \param z The third coordinate that we want to calculate
+		 * \return output Output vector of length num_output
 		 * */
 		void evalF(double *output, double x, double y, double z)
 		{
@@ -449,8 +471,8 @@ class DynamicInterpolation
 			}
 		}
 		
-		// Load from file, any data points that correspond to the current grid
-		// File has data stored as: "x y z data_array" on each line
+		//! Load from file, any data points that correspond to the current grid
+		//! File has data stored as: "x y z data_array" on each line
 		int file_load()
 		{
 			int num_points_found = 0;
@@ -462,7 +484,7 @@ class DynamicInterpolation
 				FILE *fid = fopen(file_name.c_str(),"r");
 				if (fid == NULL)
 				{
-					cout << "DynamicInterpolation::file_load() Cannot open file for checking" << endl;
+					cout << "DynamicInterpolation::file_load() Cannot open file" << endl;
 					exit(-1);
 				}
 				
@@ -530,7 +552,7 @@ class DynamicInterpolation
 			return num_points_found;
 		}
 		
-		// Save current grid to file, do not overwrite old data
+		//! Save current grid to file, do not overwrite old data
 		void file_save()
 		{
 			// Append new data to back of old file, or create if does not exist
@@ -575,8 +597,8 @@ class DynamicInterpolation
 		
 	private:
 		
-		// Return true if point (x,y,z) exists in the file
-		// Otherwise return false
+		//! Return true if point (x,y,z) exists in the file
+		//! Otherwise return false
 		bool file_does_point_exist(double x,double y,double z)
 		{
 			
@@ -635,11 +657,6 @@ class DynamicInterpolation
 		double ****fxyz;
 		
 		double ERROR_TOL; // File IO error tolerance
-		
-		//void (*F)(double*, double,double, double); // Function that should be interpolated
-		
-		
-	
 };
 
 #endif
