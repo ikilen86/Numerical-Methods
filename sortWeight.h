@@ -1,5 +1,7 @@
 /*
-	Sort weight indices using quicksort.
+	Sort array A and return index set I such that A(I) = B is sorted
+	Uses quicksort.
+	Can have a custom user defined comparison function.
 	Isak Kilen
 */
 
