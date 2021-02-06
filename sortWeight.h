@@ -75,7 +75,7 @@ class sortWeight
 			return index;
 		}
 		
-		//! Apply sorting to an array using an external temp array.
+		//! Apply sorting to a (int) array using an external temp array.
 		/*! Sort array A, after running runSort to compute index set.
 		 * \param array target array to sort
 		 * \param dummy an array to assist with sorting.
@@ -94,6 +94,12 @@ class sortWeight
 			}
 		}
 		
+		//! Apply sorting to a (double) array using an external temp array.
+		/*! Sort array A, after running runSort to compute index set.
+		 * \param array target array to sort
+		 * \param dummy an array to assist with sorting.
+		 * \se runSort
+		 **/
 		void applyIndexSort_double(double *array, double *dummy)
 		{
 			for(int i = 0; i < array_length; i++)
@@ -127,7 +133,6 @@ class sortWeight
 			index = p - 1;
 			for(int i = p; i < r; i++)
 			{
-				//if(list[i] <= pivot)
 				if (my3Sort(list[i],pivot))
 				{
 					index++;
