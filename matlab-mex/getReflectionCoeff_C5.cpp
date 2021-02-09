@@ -35,7 +35,7 @@ const double c0 = 2.99792458E+08; // Speed of light
  * \param G0 Store computed reflection coeff. for other uses (can be NULL if this is not needed)
  * \param G_end	Precomputed transfer matrix for final parts of structure. Will be added right before substrate layer (can be NULL)
  **/
-void getRT(std::complex<double> *r, std::complex<double> *t, double *n_re, double *n_im, double *h, int NumLayers, double freq, double na, double nb, std::complex<double> *G0, std::complex<double> *G_end)
+void getRT(std::complex<double> *r, std::complex<double> *t,double *n_re, double *n_im, double *h, int NumLayers, double freq, double na, double nb, std::complex<double> *G0, std::complex<double> *G_end)
 {
 	//======================
 	// Find transfer matrix
@@ -100,8 +100,9 @@ void getRT(std::complex<double> *r, std::complex<double> *t, double *n_re, doubl
  * \param na Refractive indices of first material
  * \param nb Refractive indices of substrate material
  * \param freq Frequency of light, can be a list. Units: [1/s]
- * \param n -> List of refractive indices of material layers
+ * \param n List of refractive indices of material layers
  * \param h List of lengths of material layers. Units: [m]
+ * \param theta Angle of incidence in material 'a', units of radians, (default=0)
  * \param G A precomputed reflection coefficient, for each freq.
  *	    When this is used, the final layer index and width has to be
  *	    included in and the final element in n and h.
@@ -119,10 +120,10 @@ void getRT(std::complex<double> *r, std::complex<double> *t, double *n_re, doubl
  * */
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-	if (!(((nrhs == 5)||(nrhs ==6))||(nrhs ==8)))
+	if (!(((nrhs == 5)||(nrhs ==6))||((nrhs==7)||(nrhs ==9))))
 	{
 		mexPrintf("nrhs = %d\n",nrhs);
-		mexErrMsgTxt("getReflectionCoefficient(): Need 5,6 or 8 input arguments.");
+		mexErrMsgTxt("getReflectionCoefficient(): Need 5,6,7 or 9 input arguments.");
 	}
 	
 	if (!(((nlhs == 1)||(nlhs == 2))||(nlhs == 3)))
@@ -145,7 +146,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	{
 		mexErrMsgTxt("getReflectionCoefficient():freq has to be a 1D list");
 	}
-	const int  *dim_array = mxGetDimensions(prhs[2]);
+	const mwSize *dim_array;
+	dim_array = mxGetDimensions(prhs[2]);
 	if (dim_array[0]==1)
 	{
 		freq_rows = 1;
@@ -262,20 +264,41 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	{
 		h[i] = mxGetPr(prhs[4])[i];
 	}
+	
+	//==========================
+	// input: theta
+	//==========================
+	double theta = 0;
+	if (nrhs >= 6)
+	{
+		int t_number_of_dims = mxGetNumberOfDimensions(prhs[5]);
+		if (t_number_of_dims > 2)
+		{
+			mexErrMsgTxt("getReflectionCoefficient(): theta is only a single scalar");
+		}
+		dim_array = mxGetDimensions(prhs[5]);
+		if ((dim_array[0]==1)&&(dim_array[1]==1))
+		{
+			theta = *(double*)mxGetData(prhs[5]);
+		} else if (!((dim_array[0]==0)&&(dim_array[1]==0)))
+		{
+			mexErrMsgTxt("getReflectionCoefficient(): theta is only a single scalar");
+		}
+	}
 
 	//==========================
 	// input: G_final
 	//==========================
 	std::complex<double> *G_final = NULL;
-	if (nrhs >= 6)
+	if (nrhs >= 7)
 	{
 		// Check input G_final matrix
-		int G_number_of_dims = mxGetNumberOfDimensions(prhs[5]);
+		int G_number_of_dims = mxGetNumberOfDimensions(prhs[6]);
 		if (G_number_of_dims != 2)
 		{
 			mexErrMsgTxt("getReflectionCoefficient(): G_final has to be a 1D list");
 		}
-		dim_array = mxGetDimensions(prhs[5]);
+		dim_array = mxGetDimensions(prhs[6]);
 		
 		if (!((dim_array[0]==0)&&(dim_array[1]==0)))
 		{
@@ -301,14 +324,14 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		
 			for(int i =0; i < NumFreqs; i++)
 			{
-				G_final[i] 	= mxGetPr(prhs[5])[i];
+				G_final[i] 	= mxGetPr(prhs[6])[i];
 			}
 			
-			if (mxGetPi(prhs[5]) != NULL)
+			if (mxGetPi(prhs[6]) != NULL)
 			{
 				for(int i =0; i < NumFreqs; i++)
 				{
-					G_final[i] 	+= I*mxGetPi(prhs[5])[i];
+					G_final[i] 	+= I*mxGetPi(prhs[6])[i];
 				}
 			}
 			
@@ -322,14 +345,14 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	//=================
 	int NumQWs = 0;
 	int *n_qw_ind = NULL;
-	if (nrhs >= 8)
+	if (nrhs >= 9)
 	{
-		number_of_dims = mxGetNumberOfDimensions(prhs[6]);
+		number_of_dims = mxGetNumberOfDimensions(prhs[7]);
 		if (h_number_of_dims > 2)
 		{
 			mexErrMsgTxt("getReflectionCoefficient():n_qw_ind has to be a 1D list");
 		}
-		dim_array = mxGetDimensions(prhs[6]);
+		dim_array = mxGetDimensions(prhs[7]);
 		if ((dim_array[0]==0)&&(dim_array[1]==0))
 		{
 			NumQWs = 0;
@@ -348,7 +371,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 			n_qw_ind = new int[NumQWs];
 			for(int i =0; i < NumQWs; i++) 
 			{
-				n_qw_ind[i] = mxGetPr(prhs[6])[i];
+				n_qw_ind[i] = mxGetPr(prhs[7])[i];
 			}
 		}
 	}
@@ -357,15 +380,15 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	// input: n_qw
 	//==============
 	std::complex<double> **n_qw = NULL;
-	if (nrhs >= 8)
+	if (nrhs >= 9)
 	{
 		// Check input G_final matrix
-		number_of_dims = mxGetNumberOfDimensions(prhs[7]);
+		number_of_dims = mxGetNumberOfDimensions(prhs[8]);
 		if (number_of_dims != 2)
 		{
 			mexErrMsgTxt("getReflectionCoefficient(): n_qw has to be a 2D array");
 		}
-		dim_array = mxGetDimensions(prhs[7]);
+		dim_array = mxGetDimensions(prhs[8]);
 		
 		if (!((dim_array[0]==0)&&(dim_array[1]==0)))
 		{
@@ -380,13 +403,13 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 				n_qw[j] = new std::complex<double> [NumQWs];
 				for(int i =0; i < NumQWs; i++)
 				{
-					n_qw[j][i] = mxGetPr(prhs[7])[j*NumQWs + i];// + I*mxGetPi(prhs[7])[j + i*NumFreqs];
+					n_qw[j][i] = mxGetPr(prhs[8])[j*NumQWs + i];// + I*mxGetPi(prhs[7])[j + i*NumFreqs];
 				}
-				if (mxGetPi(prhs[7]) != NULL)
+				if (mxGetPi(prhs[8]) != NULL)
 				{
 					for(int i =0; i < NumQWs; i++)
 					{
-						n_qw[j][i] += I*mxGetPi(prhs[7])[j*NumQWs + i];
+						n_qw[j][i] += I*mxGetPi(prhs[8])[j*NumQWs + i];
 					}
 				}
 			}
@@ -396,6 +419,34 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 				mexErrMsgTxt("getReflectionCoefficient(): n_qw doesnt have any QWs, but n_qw_ind does...");
 			}
 		}
+	}
+	
+	//====================
+	// Angle of incidence
+	//====================
+	if (theta != 0)
+	{
+		double sta = na*sin(theta);
+		for(int i =0; i < NumLayers; i++)
+		{
+			std::complex<double> ni     = n_re[i] + I*n_im[i];
+			std::complex<double> sta_ni = sta/ni;
+			std::complex<double> tmp = ni*sqrt(1.0-(sta_ni)*(sta_ni));
+			n_re[i] = real(tmp);
+			n_im[i] = imag(tmp);
+		}
+		
+		for(int i =0 ;i < NumFreqs; i++)
+		{
+			for(int j = 0; j < NumQWs; j++)
+			{
+				std::complex<double> sta_ni = sta/n_qw[i][j];
+				n_qw[i][j] = n_qw[i][j]*sqrt(1.0-(sta_ni)*(sta_ni));
+			}
+		}
+		
+		nb = nb*sqrt(1.0-(sta/nb)*(sta/nb));
+		na = na*sqrt(1.0-(sta/na)*(sta/na));
 	}
 	
 	//===============================
@@ -417,7 +468,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	std::complex<double> r[NumFreqs];
 	std::complex<double> t[NumFreqs];
 
-	if (nrhs < 6)
+	if (nrhs < 7)
 	{
 		if (nlhs >= 3)
 		{
@@ -442,7 +493,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		}
 		
 	} 
-	else if (nrhs == 6)
+	else if (nrhs == 7)
 	{
 		if (G_final != NULL)
 		{
@@ -610,7 +661,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	}
 	
 	
-	if (nrhs >= 6)
+	if (nrhs >= 7)
 	{
 		if (G_final != NULL)
 		{
@@ -619,7 +670,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	}
 	
 	
-	if (nrhs >= 8)
+	if (nrhs >= 9)
 	{
 		if (n_qw_ind != NULL)
 		{
