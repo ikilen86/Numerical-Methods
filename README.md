@@ -1,2 +1,2 @@
 # Numerical-Methods
-Various numerical methods in mathematics
+A few samples from my codes that I can put here
